@@ -1,4 +1,4 @@
-##Steps followed:
+## Steps followed:
 	-Install VMware Workstation 15 pro
 	-Install Ubuntu 18.04.3 in VMware
 	-Once installation is completed, fork https://github.com/torvalds/linux into your GitHub account.
@@ -16,7 +16,7 @@
 	    -Build and install modules:  sudo make -j4 modules && sudo make modules_install
 	-Installation: sudo make install
 	-Final step: sudo reboot
-#For testing:
+# For testing:
 	-Install virtual machine manager using command: sudo apt-get install virt-manager
 	-Install Ubuntu 18.04.3 (Guest VM) in Virtual Machine Manager
 
