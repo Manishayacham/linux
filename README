@@ -1,4 +1,4 @@
-#Steps followed:
+##Steps followed:
 	-Install VMware Workstation 15 pro
 	-Install Ubuntu 18.04.3 in VMware
 	-Once installation is completed, fork https://github.com/torvalds/linux into your GitHub account.
