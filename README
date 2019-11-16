@@ -1,18 +1,36 @@
-Linux kernel
-============
+## Steps followed:
+	-Install VMware Workstation 15 pro
+	-Install Ubuntu 18.04.3 in VMware
+	-Once installation is completed, fork https://github.com/torvalds/linux into your GitHub account.
+	-Open terminal in Ubuntu,download dependencies, create a directory (ex: assignment1) and clone forked Linux repository.
+            Command to install dependencies:
+            sudo apt-get install git build-essentials kernel-package fakeroot libncurses5-dev libssl-dev ccache bison flex
+            Command to Clone:
+             git clone https://github.com/<git username>/linux.git
+	-Go to directory Linux: cd linux
+	-Make changes related to Hyper call in /linux/arch/x86/kvm/X86.c file  
+	-Kernel Build and Installation process:
+	    -Copy config file using command: cp /boot/config-`uname -a` .config
+	    -Bring the config file up to date using the command: yes''|sudo make oldconfig
+	    -Compile the kernel using command: sudo make -j4 (In my case it’s 4. Number of core processors may differ based on configuration)
+	    -Build and install modules:  sudo make -j4 modules && sudo make modules_install
+	-Installation: sudo make install
+	-Final step: sudo reboot
+# For testing:
+	-Install virtual machine manager using command: sudo apt-get install virt-manager
+	-Install Ubuntu 18.04.3 (Guest VM) in Virtual Machine Manager
 
-There are several guides for kernel developers and users. These guides can
-be rendered in a number of formats, like HTML and PDF. Please read
-Documentation/admin-guide/README.rst first.
-
-In order to build the documentation, use ``make htmldocs`` or
-``make pdfdocs``.  The formatted documentation can also be read online at:
-
-    https://www.kernel.org/doc/html/latest/
-
-There are various text files in the Documentation/ subdirectory,
-several of them using the Restructured Text markup notation.
-
-Please read the Documentation/process/changes.rst file, as it contains the
-requirements for building and running the kernel, and information about
-the problems which may result by upgrading your kernel.
+    -Followed below steps for testing hypercall 0X283: 
+ 
+        1. copy the .tar.gz file containing the test code to the inner vm (this can be done various ways, easiest is likely scp)
+        2. extract the tar.gz file somewhere
+        3. sudo apt install gcc make(to install the minimal compiler in the inner vm)
+        4. cd 283
+        5. make 
+        6. sudo insmod cmpe283.ko
+        7. dmesg
+        
+        
+      
+    
+    
