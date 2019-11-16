@@ -23,6 +23,9 @@
 #include "mmu.h"
 #include "trace.h"
 #include "pmu.h"
+#include <asm/atomic.h>
+#include <linux/printk.h>
+
 
 static u32 xstate_required_size(u64 xstate_bv, bool compacted)
 {
@@ -1019,6 +1022,18 @@ out:
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
+/**CMPE-283-custom code*/
+atomic_long_t total_num_exits=ATOMIC_INIT(0);
+atomic64_t total_processor_cycles = ATOMIC64_INIT(0);
+atomic_long_t each_exit_count[69];
+atomic64_t each_processor_cycles[69]; 
+u32 temp;
+
+EXPORT_SYMBOL(each_exit_count);
+EXPORT_SYMBOL(total_num_exits);
+EXPORT_SYMBOL(total_processor_cycles);
+EXPORT_SYMBOL(each_processor_cycles);
+
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
@@ -1028,7 +1043,66 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
+	/**CMPE-283-custom code*/
+	if(eax == 0x4FFFFFFF)
+	{
+		eax = atomic_long_read(&total_num_exits);
+		/**Assigned 0 to avoid junk values*/
+		ebx=0;
+		ecx=0;
+		edx=0;
+	}else if(eax == 0x4FFFFFFE)
+	{
+		ecx = atomic64_read(&total_processor_cycles) & 0xffffffff;
+		ebx = (atomic64_read(&total_processor_cycles) >> 32) & 0xffffffff;
+		/**Assigned 0 to avoid junk values*/
+		eax=0;
+		edx=0;
+	
+	}else if(eax == 0x4FFFFFFD)
+	{
+		if(ecx <= 68 && ecx != 35 && ecx != 38 && ecx != 42 && ecx !=65){		
+
+			eax = atomic_long_read(&each_exit_count[ecx]);
+			/**Assigned 0 to avoid junk values*/
+			ebx=0;
+			ecx=0;
+			edx=0;
+		}
+		else
+		{
+			eax=0;
+			ebx=0;
+			ecx=0;
+			edx=0xFFFFFFFF;
+		}
+			
+
+	} else if(eax == 0x4FFFFFFC){
+
+		temp=ecx;
+		if(temp <= 68 && temp != 35 && temp != 38 && temp != 42 && temp !=65 ){
+			
+			ecx =atomic64_read(&each_processor_cycles[temp]) & 0xffffffff;
+			ebx =(atomic64_read(&each_processor_cycles[temp]) >> 32) & 0xffffffff;
+			/**Assigned 0 to avoid junk values*/
+			eax=0;
+			edx=0;
+
+		}
+		else
+		{
+			eax=0;
+			ebx=0;
+			ecx=0;
+			edx=0xFFFFFFFF;
+		}
+		
+	} else
+	{
+		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);	
+	}
+	
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);

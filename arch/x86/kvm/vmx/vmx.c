@@ -61,6 +61,7 @@
 #include "vmx.h"
 #include "x86.h"
 
+
 MODULE_AUTHOR("Qumranet");
 MODULE_LICENSE("GPL");
 
@@ -437,7 +438,7 @@ static unsigned long host_idt_base;
  * Though SYSCALL is only supported in 64-bit mode on Intel CPUs, kvm
  * will emulate SYSCALL in legacy mode if the vendor string in guest
  * CPUID.0:{EBX,ECX,EDX} is "AuthenticAMD" or "AMDisbetter!" To
- * support this emulation, IA32_STAR must always be included in
+ * support this emulation, IA32_STAR must always be Fincluded in
  * vmx_msr_index[], even in i386 builds.
  */
 const u32 vmx_msr_index[] = {
@@ -4593,6 +4594,7 @@ static int handle_machine_check(struct kvm_vcpu *vcpu)
 
 static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 {
+	//atomic_long_inc(&exit_count[0]);
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	struct kvm_run *kvm_run = vcpu->run;
 	u32 intr_info, ex_no, error_code;
@@ -4698,12 +4700,14 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 
 static int handle_external_interrupt(struct kvm_vcpu *vcpu)
 {
+	//atomic_long_inc(&exit_count[1]);
 	++vcpu->stat.irq_exits;
 	return 1;
 }
 
 static int handle_triple_fault(struct kvm_vcpu *vcpu)
 {
+	//atomic_long_inc(&exit_count[2]);
 	vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
 	vcpu->mmio_needed = 0;
 	return 0;
@@ -5853,13 +5857,26 @@ void dump_vmcs(void)
  * The guest has exited.  See if we can fix it or if we need userspace
  * assistance.
  */
+
+/**CMPE-283-custom code*/
+extern  atomic_long_t total_num_exits;
+extern  atomic64_t total_processor_cycles;
+extern atomic_long_t each_exit_count[69];
+extern atomic64_t each_processor_cycles[69];
+
 static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 {
+
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
 
 	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
+
+	/**CMPE-283-custom code*/	
+	atomic_long_inc(&each_exit_count[exit_reason]);
+	atomic_long_inc(&total_num_exits);
+
 
 	/*
 	 * Flush logged GPAs PML buffer, this will make dirty_bitmap more
@@ -5905,7 +5922,7 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 			(exit_reason != EXIT_REASON_EXCEPTION_NMI &&
 			exit_reason != EXIT_REASON_EPT_VIOLATION &&
 			exit_reason != EXIT_REASON_PML_FULL &&
-			exit_reason != EXIT_REASON_TASK_SWITCH)) {
+			exit_reason != EXIT_REASON_TASK_SWITCH))  {
 		vcpu->run->exit_reason = KVM_EXIT_INTERNAL_ERROR;
 		vcpu->run->internal.suberror = KVM_INTERNAL_ERROR_DELIVERY_EV;
 		vcpu->run->internal.ndata = 3;
@@ -5941,7 +5958,17 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 
 	if (exit_reason < kvm_vmx_max_exit_handlers
 	    && kvm_vmx_exit_handlers[exit_reason])
-		return kvm_vmx_exit_handlers[exit_reason](vcpu);
+	{
+		/**CMPE-283-custom code*/
+		u64 exit_handle=0;		
+		u64 start_time,end_time;
+		start_time=rdtsc();		
+		exit_handle = kvm_vmx_exit_handlers[exit_reason](vcpu);
+		end_time=rdtsc();
+		atomic64_add(end_time-start_time,&each_processor_cycles[exit_reason]);
+		atomic64_add(end_time-start_time,&(total_processor_cycles));
+		return exit_handle;
+	}
 	else {
 		vcpu_unimpl(vcpu, "vmx: unexpected exit reason 0x%x\n",
 				exit_reason);
